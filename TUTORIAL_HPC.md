@@ -201,9 +201,9 @@ This hybrid design is precisely how modern state-of-the-art complex models (such
 
 ---
 
-## 📈 6. Key Performance Metrics for Students
+## 📈 6. Key Performance Metrics 
 
-When writing performance analysis papers or completing lab assignments, you must track and evaluate your parallel scaling using two main metrics:
+When writing performance analysis papers, you must track and evaluate your parallel scaling using two main metrics:
 
 ### 1. MLUPS (Million Lattice Updates Per Second)
 
@@ -218,8 +218,4 @@ $$\text{MLUPS} = \frac{\text{Global NX} \times \text{Global NY} \times \text{Tot
 * **Strong Scaling:** You keep the global grid size fixed (e.g., $1024 \times 1024$) and steadily increase your core count (1, 2, 4, 8, 16, 32 threads). Your goal is to see if the execution time drops linearly with added hardware.
 * **Weak Scaling:** You increase your grid size at the exact same rate that you add CPU cores. The workload per core remains perfectly identical. Your goal is to see if the execution time remains perfectly constant as the problem scales out.
 
----
 
-### How to use this file:
-
-Save this text as `TUTORIAL_HPC.md` in your project folder. It serves as an informative architectural guide that cleanly ties your source code implementations back to your physical hardware architecture!
