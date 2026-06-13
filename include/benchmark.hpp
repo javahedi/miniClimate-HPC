@@ -9,5 +9,6 @@ void append_benchmark(
     int steps,
     int threads,
     double runtime,
+    double compute_time,
     double mlups
 );

@@ -1,5 +1,6 @@
 #pragma once 
 
+#include "timer.hpp"
 #include <vector>
 #include <string>
 
@@ -22,17 +23,18 @@ class Solver {
         void initialize();
         void run();
         void write_field(const std::string& filename) const;
+        double compute_time() const;
 
     private:
-    int nx_, ny_, steps_;
-    double dt_, kappa_;
-    double dx_, dy_;
+        int nx_, ny_, steps_;
+        double dt_, kappa_;
+        double dx_, dy_;
 
-    std::vector<double> T_;      // current temperature field
-    std::vector<double> T_new_;  // updated field
+        std::vector<double> T_;      // current temperature field
+        std::vector<double> T_new_;  // updated field
 
 
-    int index(int i, int j) const;
-    void step();
+        int index(int i, int j) const;
+        void step();
     
  };

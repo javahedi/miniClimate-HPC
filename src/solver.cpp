@@ -69,11 +69,27 @@ void Solver::step() {
     T_.swap(T_new_);
 }
 
-void Solver::run() {
+
+double Solver::compute_time() const
+{
+    return compute_timer_.seconds();
+}
+
+
+void Solver::run()
+{
+    compute_timer_.reset();
+    compute_timer_.start();
+
     for (int n = 0; n < steps_; ++n) {
         step();
     }
+
+    compute_timer_.stop();
 }
+
+
+
 
 void Solver::write_field(const std::string& filename) const {
     std::ofstream file(filename);

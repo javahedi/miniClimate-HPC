@@ -11,10 +11,10 @@ void append_benchmark(
     int steps,
     int threads,
     double runtime,
+    double compute_time,
     double mlups)
 {
-    bool write_header =
-        !std::filesystem::exists(filename);
+    bool write_header = !std::filesystem::exists(filename);
 
     std::ofstream file(
         filename,
@@ -24,7 +24,7 @@ void append_benchmark(
     if (write_header)
     {
         file
-        << "nx,ny,steps,threads,runtime,mlups\n";
+        << "nx,ny,steps,threads,runtime,compute_time,mlups\n";
     }
 
     file
@@ -33,5 +33,6 @@ void append_benchmark(
     << steps << ","
     << threads << ","
     << runtime << ","
+    << compute_time <<","
     << mlups << "\n";
 }

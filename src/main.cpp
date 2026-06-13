@@ -28,6 +28,8 @@ int main(int argc, char** argv)
         auto start = std::chrono::high_resolution_clock::now();
 
         solver.run();
+        double compute_time = solver.compute_time();
+
 
         auto end = std::chrono::high_resolution_clock::now();
 
@@ -50,6 +52,7 @@ int main(int argc, char** argv)
             cfg.steps,
             threads,
             runtime,
+            compute_time,
             mlups
         );
 
