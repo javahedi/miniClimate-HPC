@@ -60,24 +60,16 @@ miniClimate-HPC/
 └── README.md
 ```
 
-## Future Work
-
-- MPI domain decomposition
-- Halo exchange
-- Strong scaling studies
-- Weak scaling studies
-- SLURM job scripts
-- GPU/OpenACC backend
 
 
 
-# Architectural Design: 1D Domain Decomposition & MPI Halo Exchange
+## Architectural Design: 1D Domain Decomposition & MPI Halo Exchange
 
 This document acts as the technical specifications manual for upgrading the `miniClimate-HPC` solver from shared-memory OpenMP to distributed-memory MPI (Message Passing Interface). 
 
 ---
 
-## 1. Core Concepts: Shared vs. Distributed Memory
+### 1. Core Concepts: Shared vs. Distributed Memory
 
 Before looking at the grid math, we distinguish the architectural transition of our parallel frameworks:
 
@@ -90,7 +82,7 @@ Before looking at the grid math, we distinguish the architectural transition of 
 
 ---
 
-## 2. 1D Domain Decomposition
+### 2. 1D Domain Decomposition
 
 To scale our $1024 \times 1024$ grid across distributed nodes, we implement **1D Row-Wise Decomposition** along the outer $x$-axis (`i` dimension). 
 
@@ -98,7 +90,7 @@ If the global grid size is $NX \times NY$, and we launch the application with $P
 
 $$\text{local\_nx} = \frac{NX}{P}$$
 
-### Example Distribution ($1024 \times 1024$ Grid across 4 Ranks)
+#### Example Distribution ($1024 \times 1024$ Grid across 4 Ranks)
 * **Rank 0** : Manages Global Rows $0$ to $255$ ($\text{local\_nx} = 256$)
 * **Rank 1** : Manages Global Rows $256$ to $511$ ($\text{local\_nx} = 256$)
 * **Rank 2** : Manages Global Rows $512$ to $767$ ($\text{local\_nx} = 256$)
@@ -106,11 +98,11 @@ $$\text{local\_nx} = \frac{NX}{P}$$
 
 ---
 
-## 3. The Local Grid Data Map (Ghost & Halo Rows)
+### 3. The Local Grid Data Map (Ghost & Halo Rows)
 
 Because our finite-difference stencil computes spatial derivatives using neighboring rows ($i+1$ and $i-1$), local boundaries require data owned by neighboring hardware ranks. We resolve this dependency by wrapping our local data domain in **Ghost Rows** (Halo Layers).
 
-### Memory Layout for a Local MPI Rank
+#### Memory Layout for a Local MPI Rank
 Instead of allocating just its active rows, each rank allocates an extended buffer containing $\text{local\_nx} + 2$ total rows.
 
 ```text
