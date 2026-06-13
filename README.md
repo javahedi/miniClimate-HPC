@@ -1,0 +1,1 @@
+This mini-application is a compact proxy for stencil-based kernels common in atmospheric and ocean models. It demonstrates MPI domain decomposition, halo exchange, OpenMP loop parallelism, runtime instrumentation, and SLURM-ready execution for EuroHPC-style systems.
