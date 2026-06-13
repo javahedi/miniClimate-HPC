@@ -1,5 +1,8 @@
 #include "config.hpp"
 #include "solver.hpp"
+#include "benchmark.hpp"
+
+#include <omp.h>
 
 #include <chrono>
 #include <iostream>
@@ -37,6 +40,18 @@ int main(int argc, char** argv)
         std::cout << "\nRuntime : " << runtime << " s\n";
         // Million Lattice Updates Per Second
         std::cout << "MLUPS   : " << mlups << "\n";
+
+        int threads = omp_get_max_threads();
+
+        append_benchmark(
+            "benchmark.csv",
+            cfg.nx,
+            cfg.ny,
+            cfg.steps,
+            threads,
+            runtime,
+            mlups
+        );
 
         solver.write_field(cfg.output);
     }

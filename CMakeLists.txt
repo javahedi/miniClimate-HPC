@@ -17,6 +17,8 @@ add_executable(miniClimate
     src/main.cpp
     src/solver.cpp
     src/config.cpp
+    src/benchmark.cpp
+
 )
 
 # Modern target-based linking (automatically handles flags, includes, and libs)
