@@ -1,0 +1,3 @@
+/Users/javadvahedi/Desktop/project-miniClimte-HPC/build/CMakeFiles/miniClimate.dir
+/Users/javadvahedi/Desktop/project-miniClimte-HPC/build/CMakeFiles/edit_cache.dir
+/Users/javadvahedi/Desktop/project-miniClimte-HPC/build/CMakeFiles/rebuild_cache.dir
