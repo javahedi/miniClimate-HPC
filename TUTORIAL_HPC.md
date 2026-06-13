@@ -1,5 +1,5 @@
 
-# 🎓 From Silicon to Simulation: An Advanced Guide to Supercomputing & Parallel CFD
+# 🎓 From Silicon to Simulation: An Advanced Guide to Supercomputing & Parallel Computing
 
 Welcome to the `miniClimate-HPC` architectural masterclass! This document serves as an exhaustive tutorial for students and engineers aiming to understand how modern high-performance computing (HPC) hardware dictates parallel software engineering.
 
@@ -197,7 +197,7 @@ The absolute zenith of supercomputing design combines both worlds into a **Hybri
 
 By binding **1 MPI Rank per physical NUMA socket**, we maximize our network message performance. Then, inside each socket, we launch **16 OpenMP threads** to share local memory efficiently without ever crossing the slow UPI hardware interconnect bus.
 
-This hybrid design is precisely how modern state-of-the-art climate models exploit massive multi-petaflop supercomputers.
+This hybrid design is precisely how modern state-of-the-art complex models (such as climate) exploit massive multi-petaflop supercomputers.
 
 ---
 
