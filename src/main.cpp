@@ -19,6 +19,8 @@ int main(int argc, char** argv)
             cfg.nx,
             cfg.ny,
             cfg.steps,
+            cfg.u,
+            cfg.v,
             cfg.dt,
             cfg.kappa
         );

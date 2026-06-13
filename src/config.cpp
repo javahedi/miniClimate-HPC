@@ -29,6 +29,16 @@ Config parse_args(int argc, char** argv)
 
             cfg.ny = std::stoi(require_value(arg));
 
+        } else if (arg == "--u") {
+
+            cfg.u = std::stod(require_value(arg));
+
+        }
+        else if (arg == "--v") {
+
+            cfg.v = std::stod(require_value(arg));
+
+
         } else if (arg == "--steps") {
 
             cfg.steps = std::stoi(require_value(arg));
@@ -64,6 +74,12 @@ void print_config(const Config& cfg)
     std::cout << "Grid      : "
               << cfg.nx << " x "
               << cfg.ny << "\n";
+
+    std::cout << "u         : "
+          << cfg.u << "\n";
+
+    std::cout << "v         : "
+            << cfg.v << "\n";
 
     std::cout << "Steps     : "
               << cfg.steps << "\n";

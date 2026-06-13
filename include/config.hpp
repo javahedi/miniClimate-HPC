@@ -7,6 +7,9 @@ struct Config {
     int nx = 256;
     int ny = 256;
     int steps = 500;
+    double u = 0.1;
+    double v = 0.05;
+    
 
     double dt = 1e-6;
     double kappa = 0.01;

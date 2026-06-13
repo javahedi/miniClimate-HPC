@@ -18,7 +18,7 @@
 
 class Solver {
     public:
-        Solver(int nx, int ny, int steps, double dt, double kappa);
+        Solver(int nx, int ny, int steps, double u, double v, double dt, double kappa);
 
         void initialize();
         void run();
@@ -27,6 +27,7 @@ class Solver {
 
     private:
         int nx_, ny_, steps_;
+        double u_, v_;
         double dt_, kappa_;
         double dx_, dy_;
 
@@ -36,5 +37,6 @@ class Solver {
 
         int index(int i, int j) const;
         void step();
+        Timer compute_timer_;
     
  };

@@ -5,10 +5,12 @@
 #include <stdexcept>
 #include <omp.h> 
 
-Solver::Solver(int nx, int ny, int steps, double dt, double kappa)
+Solver::Solver(int nx, int ny, int steps, double u, double v, double dt, double kappa)
     : nx_(nx), 
       ny_(ny), 
       steps_(steps), 
+      u_(u),
+      v_(v),
       dt_(dt), 
       kappa_(kappa),
       dx_(1.0 / nx),
@@ -61,9 +63,25 @@ void Solver::step() {
                 (T_[index(ip, j)] - 2.0 * center + T_[index(im, j)]) / dx2 +
                 (T_[index(i, jp)] - 2.0 * center + T_[index(i, jm)]) / dy2;
 
-            T_new_[index(i, j)] = center + dt_ * kappa_ * laplacian;
-        }
-    }
+            double dTdx =
+                (T_[index(ip,j)]
+                -T_[index(im,j)])
+                /(2.0*dx_);
+
+            double dTdy =
+                (T_[index(i,jp)]
+                -T_[index(i,jm)])
+                /(2.0*dy_);
+
+            T_new_[index(i,j)] =
+                center
+                - dt_ * (
+                    u_ * dTdx
+                + v_ * dTdy
+                )
+                + dt_ * kappa_ * laplacian;
+                    }
+                }
 
     // Swap pointers efficiently
     T_.swap(T_new_);
