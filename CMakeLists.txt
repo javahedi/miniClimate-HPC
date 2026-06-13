@@ -35,3 +35,6 @@ target_include_directories(miniClimate
 
 # Optimization and warning flags
 target_compile_options(miniClimate PRIVATE -O3 -Wall -Wextra)
+
+
+

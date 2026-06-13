@@ -43,12 +43,14 @@ void Solver::initialize() {
     }
 }
 
+// This function is now called by ALL threads simultaneously inside the parallel region
 void Solver::step() {
     double dx2 = dx_ * dx_;
     double dy2 = dy_ * dy_;
-    // #pragma omp parallel or #pragma omp parallel for schedule(static)  for--> only i loop 
-    //#pragma omp parallel for collapse(2) // both i an j loop parallel
-    #pragma omp parallel for schedule(static)
+
+    // Notice there is NO `parallel` keyword here, only `omp for`.
+    // It hitches a ride on the thread pool already spawned in run().
+    #pragma omp for schedule(static)
     for (int i = 0; i < nx_; ++i) {
         int ip = (i + 1) % nx_;
         int im = (i - 1 + nx_) % nx_; 
@@ -63,68 +65,54 @@ void Solver::step() {
                 (T_[index(ip, j)] - 2.0 * center + T_[index(im, j)]) / dx2 +
                 (T_[index(i, jp)] - 2.0 * center + T_[index(i, jm)]) / dy2;
 
-            double dTdx =
-                (T_[index(ip,j)]
-                -T_[index(im,j)])
-                /(2.0*dx_);
+            double dTdx = (T_[index(ip, j)] - T_[index(im, j)]) / (2.0 * dx_);
+            double dTdy = (T_[index(i, jp)] - T_[index(i, jm)]) / (2.0 * dy_);
 
-            double dTdy =
-                (T_[index(i,jp)]
-                -T_[index(i,jm)])
-                /(2.0*dy_);
-
-            T_new_[index(i,j)] =
-                center
-                - dt_ * (
-                    u_ * dTdx
-                + v_ * dTdy
-                )
-                + dt_ * kappa_ * laplacian;
-                    }
-                }
-
-    // Swap pointers efficiently
-    T_.swap(T_new_);
+            T_new_[index(i, j)] = center - dt_ * (u_ * dTdx + v_ * dTdy) + dt_ * kappa_ * laplacian;
+        }
+    } // <-- There is an implicit OpenMP barrier here. All threads wait until the full grid step is computed.
 }
-
-
-double Solver::compute_time() const
-{
-    return compute_timer_.seconds();
-}
-
 
 void Solver::run()
 {
     compute_timer_.reset();
     compute_timer_.start();
 
-    for (int n = 0; n < steps_; ++n) {
-        step();
+    // Spawn the OpenMP thread pool EXACTLY ONCE here
+    #pragma omp parallel
+    {
+        for (int n = 0; n < steps_; ++n) {
+            
+            // All threads jump into step() together and split up the rows
+            step(); 
+
+            // Only ONE thread swaps the pointers while others wait
+            #pragma omp single
+            {
+                T_.swap(T_new_);
+            } // <-- Implicit barrier here ensures the swap finishes before anyone starts the next time step loop
+        }
     }
 
     compute_timer_.stop();
 }
 
-
-
+double Solver::compute_time() const {
+    return compute_timer_.seconds();
+}
 
 void Solver::write_field(const std::string& filename) const {
     std::ofstream file(filename);
-
     if (!file) {
         throw std::runtime_error("Could not open output file");
     }
-
     for (int i = 0; i < nx_; ++i) {
         for (int j = 0; j < ny_; ++j) {
             double x = static_cast<double>(i) / nx_;
             double y = static_cast<double>(j) / ny_;
-
             file << x << " " << y << " " << T_[index(i, j)] << "\n";
         }
-        file << "\n"; // Blank line for gnuplot pm3d compatibility
+        file << "\n";
     }
-
     std::cout << "Wrote field to " << filename << "\n";
 }
