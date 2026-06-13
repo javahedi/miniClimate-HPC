@@ -88,7 +88,7 @@ To scale our $1024 \times 1024$ grid across distributed nodes, we implement **1D
 
 If the global grid size is $NX \times NY$, and we launch the application with $P$ MPI Ranks, the domain is sliced horizontally:
 
-$$\text{local\_nx} = \frac{NX}{P}$$
+$\text{local\_nx} = \frac{NX}{P}$
 
 #### Example Distribution ($1024 \times 1024$ Grid across 4 Ranks)
 * **Rank 0** : Manages Global Rows $0$ to $255$ ($\text{local\_nx} = 256$)
