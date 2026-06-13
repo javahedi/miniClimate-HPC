@@ -1,1 +1,0 @@
-/usr/bin/c++  -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/miniClimate.dir/src/main.cpp.o CMakeFiles/miniClimate.dir/src/solver.cpp.o CMakeFiles/miniClimate.dir/src/config.cpp.o -o miniClimate  /opt/homebrew/opt/libomp/lib/libomp.dylib
