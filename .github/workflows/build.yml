@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install compiler and dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          libomp-dev
+
+    - name: Configure CMake
+      # Creates the build directory and generates build files automatically
+      run: cmake -B build -S .
+
+    - name: Build project
+      # Compiles the target inside the build directory using all available cores
+      run: cmake --build build -j $(nproc)
+
+    - name: Run executable
+      run: |
+        ./build/miniClimate \
+          --nx 64 \
+          --ny 64 \
+          --steps 10
