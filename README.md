@@ -67,41 +67,6 @@ cmake --build build -j$(nproc)
 
 ---
 
-## 🖥️ Target Benchmarking Hardware Specifications
-
-To evaluate the scalability, memory-subsystem bottlenecks, and multi-paradigm performance of the stencil solver, the application is systematically profiled across two highly distinct microarchitectures:
-
-### 1. Local Development Platform: Apple M1 (Asymmetric SoC)
-
-A heterogeneous, low-latency ARM-based microarchitecture characterized by asymmetric core clusters and shared L2 cache rings.
-
-| Attribute | Specification | Engineering Significance |
-| --- | --- | --- |
-| **Processor Type** | Apple M1 (ARM64) | Single-die System-on-Chip (SoC) |
-| **Total Cores** | 8 Physical Cores | Configured as 4 Performance + 4 Efficiency Cores |
-| **Performance Cores (`perflevel0`)** | 4 Cores @ 3.2 GHz | Handles heavy vector/floating-point operations |
-| **Efficiency Cores (`perflevel1`)** | 4 Cores @ 2.1 GHz | Handles background threads at reduced power envelopes |
-| **L1 Cache (Perf Cluster)** | 192 KB Inst / 128 KB Data per core | Exceptionally large L1, ideal for single-line stencil caching |
-| **L1 Cache (Eff Cluster)** | 131 KB Inst / 64 KB Data per core | Reduced size; potential source of thread imbalance |
-| **L2 Cache (Perf Cluster)** | 12 MB (Shared across 4 Perf Cores) | Allows localized multi-threaded grids to fit entirely in fast cache |
-| **L2 Cache (Eff Cluster)** | 4 MB (Shared across 4 Eff Cores) | Dedicated slower pool; induces synchronization penalties if over-subscribed |
-
-### 2. Production Cluster Platform: `auroram2` (Enterprise HPC Node)
-
-A heavy-duty, dual-socket x86_64 server node designed for distributed-memory applications, featuring high-capacity AVX-512 execution pipelines and Non-Uniform Memory Access (NUMA).
-
-| Attribute | Specification | Engineering Significance |
-| --- | --- | --- |
-| **Processor Model** | Intel(R) Xeon(R) Gold 6426Y (Sapphire Rapids) | Server-grade high-performance processing fabric |
-| **Sockets Installed** | 2 Independent Sockets | Dual-processor system interconnect via high-speed Intel UPI links |
-| **Physical Cores** | 32 Cores Total (16 Cores per socket) | True physical parallelism across separate compute sockets |
-| **Hardware Threads** | 64 Logical Cores (Simultaneous Multithreading / HT) | 2 Hardware threads per physical core |
-| **Total L1 Data Cache** | 1.5 MiB (32 individual instances of 48 KiB) | Dedicated per-core low-latency storage for array stencils |
-| **Total L2 Cache** | 64 MiB (32 individual instances of 2 MiB) | Massive per-core unified cache preventing RAM thrashing |
-| **Total L3 Cache (LLC)** | 75 MiB Shared (2 instances of 37.5 MiB) | Last-Level Cache mapped per socket domain |
-| **NUMA Configuration** | 2 Discrete NUMA Nodes | **Node 0:** Cores 0-15, 32-47 | **Node 1:** Cores 16-31, 48-63 |
-| **Vector Instruction Sets** | AVX-512, AMX (Advanced Matrix Extensions) | Capable of massive SIMD parallel register packing for grid math |
-
 ---
 
 ## 📊 Execution & Benchmark Harness
@@ -139,62 +104,159 @@ sbatch scripts/submit_mpi.slurm
 
 ---
 
-## 📈 Performance Profiling & Scaling Analysis
+# 📊 Performance Evaluation
 
-### 🍏 Platform 1: Apple M1 Local Benchmark Results
+The primary goal of miniClimate-HPC is not numerical accuracy, but the investigation of modern HPC software engineering techniques including OpenMP threading, MPI domain decomposition, communication overhead, and hybrid parallel execution.
 
-*Test Parameters: Grid Size = $1024 \times 1024$, Steps = 2000 (OpenMP) / 500 (MPI)*
-
-#### Shared-Memory Scaling (Pure OpenMP)
-
-| Threads | Runtime (s) | Throughput (MLUPS) | Parallel Speedup | Parallel Efficiency |
-| --- | --- | --- | --- | --- |
-| **1** | 10.54s | 199.02 | 1.00x (Baseline) | 100.0% |
-| **2** | 5.51s | 380.37 | 1.91x | 95.5% |
-| **4** | 3.33s | 629.23 | 3.16x | 79.0% |
-| **8** | 2.90s | 723.64 | 3.63x | 45.4% |
-
-> 💡 **Hardware Insight (The Heterogeneous Core Wall):** Scaling from 1 to 4 threads yields solid parallel efficiency ($\ge 79\%$). However, moving from 4 to 8 threads results in severe scalability degradation (efficiency drops to $45.4\%$). This maps directly to the Apple M1's asymmetric topology: the first 4 threads occupy the Performance Cores (3.2 GHz, 12 MB shared L2), while threads 5-8 are forced onto the Efficiency Cores (2.1 GHz, 4 MB shared L2). The fast threads rapidly complete their loops and sit idle at the implicit OpenMP barrier waiting for the slower efficiency threads to finish.
-
-#### Distributed-Memory Scaling (Pure MPI)
-
-| Ranks (`-np`) | Runtime (s) | Throughput (MLUPS) | Relative Speedup vs `-np 1` | Scaling Behavior |
-| --- | --- | --- | --- | --- |
-| **1** | 2.59s | 202.78 | 1.00x (Baseline) | Cascades to Single-Thread OpenMP |
-| **2** | 0.60s | 874.61 | **4.31x** | **Superlinear Scaling** |
-| **4** | 0.31s | 1669.84 | **8.23x** | **Superlinear Peak** |
-| **8** | 0.83s | 629.69 | 3.10x | Context-Switching Saturation |
-
-> 💡 **Hardware Insight (L2 Cache Resonance):** The transition from `-np 1` to `-np 2` and `-np 4` exhibits remarkable superlinear speedup ($4.31\text{x}$ and $8.23\text{x}$). At `-np 1`, the full $1024 \times 1024$ double-precision array configuration consumes approximately $16\text{ MB}$ total, exceeding the $12\text{ MB}$ shared L2 cache pool and forcing the processor to throttle on main system memory bus latency. At `-np 4`, the grid decomposition partitions the subgrids down to $\approx 2\text{ MB}$ per rank, enabling the working set to fit **entirely** inside the fast L2 cache pool, eliminating RAM bus penalties entirely.
+All benchmark results reported below were obtained on a dedicated HPC cluster node.
 
 ---
 
-### 🏢 Platform 2: `auroram2` Enterprise Cluster Benchmark Results
+## 🖥️ Benchmark Platform
 
-*Test Parameters: Grid Size = $2048 \times 2048$, Steps = 500*
+| Attribute        | Specification            |
+| ---------------- | ------------------------ |
+| CPU              | Intel Xeon Platinum 9242 |
+| Sockets          | 2                        |
+| Physical Cores   | 96                       |
+| Threads per Core | 1                        |
+| NUMA Domains     | 4                        |
+| Compiler         | GCC 13.1                 |
+| MPI Library      | OpenMPI 4.1.5            |
+| Build Type       | Release (-O3)            |
 
-#### High-Efficiency Thread Scaling (Pure OpenMP)
+Benchmark configuration:
 
-*Configuration: 1 MPI Rank, bound securely to a single 16-core physical socket domain.*
+* Grid size: 2048 × 2048
+* Time steps: 1000
+* Three independent repetitions per measurement
+* Runtime reported as wall-clock execution time
+* Throughput reported in MLUPS (Million Lattice Updates Per Second)
 
-| Threads | Runtime (s) | Throughput (MLUPS) | Speedup | Parallel Efficiency |
-| --- | --- | --- | --- | --- |
-| **1** | 33.01s | 63.53 | 1.00x (Baseline) | 100.0% |
-| **2** | 17.08s | 122.78 | 1.93x | 96.5% |
-| **4** | 8.80s | 238.44 | 3.75x | 93.8% |
-| **8** | 4.43s | 473.50 | 7.45x | 93.1% |
-| **16** | 2.31s | 907.13 | **14.28x** | **89.3%** |
+---
 
-> 💡 **Hardware Insight (Explicit Thread-to-Core Pinning):** By enforcing strict hardware affinity layers (`OMP_PLACES=cores` and `OMP_PROC_BIND=close`), the thread scheduler pinned individual execution streams directly to the physical silicon. This prevented core-hopping and maximized L1/L2 cache locality, allowing performance to scale linearly up to an impressive **907.13 MLUPS** with near-zero resource contention.
+# 🚀 OpenMP Strong Scaling
 
-#### Multi-Socket & Hybrid Paradigm Traps
+Configuration:
 
-*Configuration: 2 MPI Ranks distributed across 2 separate sockets via Slurm layout.*
+* MPI ranks = 1
+* OpenMP threads varied from 1 to 16
+* Thread affinity:
 
-* **Pure Distributed Run (-np 2, 1 Thread/Rank):** Runtime: **13.10s** | Throughput: **160.03 MLUPS**
-* **Hybrid Execution Run (-np 2, 16 Threads/Rank):** Runtime: **13.05s** | Throughput: **160.64 MLUPS**
+  * OMP_PLACES=cores
+  * OMP_PROC_BIND=close
 
-> 💡 **Post-Mortem Profiling Insight:** Initial benchmark iterations revealed an allocation plateau where adding 16 OpenMP threads per MPI rank yielded zero runtime improvement. Profiling isolated this block to a missing parallel region loop-collapse within the distributed solver's internal grid updates. This highlights a vital HPC structural constraint: distributed domain decomposition and ghost-cell halo exchanges (`MPI_Sendrecv`) function independently from shared-memory vector pools. To unlock true hybrid scaling across multi-socket systems, OpenMP loop directives must actively parallelize the internal sub-grid iterations within each independent MPI memory space.
+| Threads | Runtime (s) | MLUPS | Speedup | Efficiency |
+| ------- | ----------: | ----: | ------: | ---------: |
+| 1       |       65.46 |  64.1 |    1.00 |       100% |
+| 2       |       34.16 | 122.8 |    1.92 |        96% |
+| 4       |       17.58 | 238.6 |    3.72 |        93% |
+| 8       |        8.86 | 473.3 |    7.39 |        92% |
+| 16      |        4.63 | 905.7 |    14.1 |        88% |
+
+### Analysis
+
+The stencil kernel exhibits excellent shared-memory scalability. Runtime decreases nearly linearly with increasing thread count and achieves a speedup of approximately 14× on 16 CPU cores.
+
+The sustained efficiency above 88% indicates:
+
+* Good cache locality
+* Low synchronization overhead
+* Effective OpenMP loop parallelization
+* High memory subsystem utilization
+
+The maximum observed throughput exceeds 900 MLUPS.
+
+---
+
+# 🌐 MPI Strong Scaling
+
+Configuration:
+
+* OpenMP threads = 1
+* MPI ranks varied from 1 to 32
+* One-dimensional domain decomposition
+* Halo communication implemented using MPI_Sendrecv
+
+| MPI Ranks | Runtime (s) | MLUPS |
+| --------- | ----------: | ----: |
+| 1         |       65.43 |  64.1 |
+| 2         |       26.18 | 160.2 |
+| 4         |       28.11 | 149.2 |
+| 8         |       32.12 | 130.6 |
+| 16        |       64.13 |  65.4 |
+| 32        |       130.4 |  32.2 |
+
+### Analysis
+
+The best performance is obtained with two MPI ranks.
+
+Beyond this point, communication overhead increasingly dominates computation, causing a gradual loss of scalability. This behaviour is typical of stencil-based applications when the local sub-domain size becomes too small relative to halo-exchange costs.
+
+The results highlight several future optimization targets:
+
+* NUMA-aware rank placement
+* Improved domain decomposition strategies
+* Non-blocking communication
+* Communication/computation overlap
+
+---
+
+# ⚡ Hybrid MPI + OpenMP
+
+Configuration:
+
+| MPI Ranks | OpenMP Threads |
+| --------- | -------------- |
+| 1         | 32             |
+| 2         | 16             |
+| 4         | 8              |
+| 8         | 4              |
+| 16        | 2              |
+
+Benchmark results:
+
+| MPI × OMP | Runtime (s) | MLUPS |
+| --------- | ----------: | ----: |
+| 1 × 32    |        2.53 |  1656 |
+| 2 × 16    |       25.96 |   162 |
+| 4 × 8     |       28.06 |   149 |
+| 8 × 4     |       48.03 |    87 |
+| 16 × 2    |       79.84 |    52 |
+
+### Analysis
+
+The best performance is achieved using a single MPI rank combined with 32 OpenMP threads.
+
+The current hybrid implementation does not yet scale efficiently across increasing MPI rank counts, suggesting that communication costs dominate over computational gains in the present design.
+
+This benchmark therefore serves as a useful case study for future optimization work focused on:
+
+* Hybrid parallel execution
+* MPI/OpenMP interaction
+* NUMA locality
+* Halo-exchange optimization
+* Communication-aware decomposition strategies
+
+---
+
+# 🔬 Future Development Directions
+
+The project is actively evolving toward a more realistic climate-model proxy application.
+
+Planned improvements include:
+
+* Two-dimensional Cartesian domain decomposition
+* Non-blocking halo exchanges (MPI_Isend / MPI_Irecv)
+* NUMA-aware rank placement
+* SIMD vectorization analysis
+* Roofline performance modelling
+* Communication/computation overlap
+* OpenMP task-based execution
+* GPU offloading using OpenMP Target and OpenACC
+* Performance portability studies across heterogeneous HPC systems
+
+
 
 ---
 
