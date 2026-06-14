@@ -36,13 +36,21 @@ void SolverMPI::initialize() {
 }
 
 void SolverMPI::exchange_halos() {
-    MPI_Sendrecv(&T_[index(1, 0)], ny_, MPI_DOUBLE, domain_.left_rank(), 0,
-                 &T_[index(local_nx_ + 1, 0)], ny_, MPI_DOUBLE, domain_.right_rank(), 0,
-                 domain_.comm(), MPI_STATUS_IGNORE);
+    comm_timer_.start();
 
-    MPI_Sendrecv(&T_[index(local_nx_, 0)], ny_, MPI_DOUBLE, domain_.right_rank(), 1,
-                 &T_[index(0, 0)], ny_, MPI_DOUBLE, domain_.left_rank(), 1,
-                 domain_.comm(), MPI_STATUS_IGNORE);
+    MPI_Sendrecv(
+        &T_[index(1, 0)], ny_, MPI_DOUBLE, domain_.left_rank(), 0,
+        &T_[index(local_nx_ + 1, 0)], ny_, MPI_DOUBLE, domain_.right_rank(), 0,
+        domain_.comm(), MPI_STATUS_IGNORE
+    );
+
+    MPI_Sendrecv(
+        &T_[index(local_nx_, 0)], ny_, MPI_DOUBLE, domain_.right_rank(), 1,
+        &T_[index(0, 0)], ny_, MPI_DOUBLE, domain_.left_rank(), 1,
+        domain_.comm(), MPI_STATUS_IGNORE
+    );
+
+    comm_timer_.stop();
 }
 
 void SolverMPI::step() {
@@ -69,24 +77,48 @@ void SolverMPI::step() {
     T_.swap(T_new_);
 }
 
+
 void SolverMPI::run() {
-    compute_timer_.reset(); compute_timer_.start();
-    for (int n = 0; n < steps_; ++n) { step(); }
+    compute_timer_.reset();
+    comm_timer_.reset();
+
+    compute_timer_.start();
+
+    for (int n = 0; n < steps_; ++n) {
+        step();
+    }
+
     compute_timer_.stop();
 }
 
 double SolverMPI::compute_time() const { return compute_timer_.seconds(); }
+double SolverMPI::comm_time() const {return comm_timer_.seconds();
+}
 
-void SolverMPI::write_field(const std::string& filename) const {
-    // Basic approach: Only Rank 0 records its local view 
-    // (We will implement parallel MPI-IO gathering next!)
-    if (domain_.rank() == 0) {
-        std::ofstream file(filename);
-        for (int i = 1; i <= local_nx_; ++i) {
-            for (int j = 0; j < ny_; ++j) {
-                file << T_[index(i, j)] << (j == ny_ - 1 ? "" : " ");
-            }
-            file << "\n";
+vvoid SolverMPI::write_field(const std::string& filename) const {
+    std::string rank_filename =
+        filename + "_rank" + std::to_string(domain_.rank()) + ".dat";
+
+    std::ofstream file(rank_filename);
+
+    if (!file) {
+        throw std::runtime_error("Could not open output file: " + rank_filename);
+    }
+
+    for (int i = 1; i <= local_nx_; ++i) {
+        for (int j = 0; j < ny_; ++j) {
+            double x =
+                static_cast<double>(domain_.start_x() + (i - 1))
+                / domain_.global_nx();
+
+            double y =
+                static_cast<double>(j)
+                / domain_.global_ny();
+
+            file << x << " "
+                 << y << " "
+                 << T_[index(i, j)] << "\n";
         }
+        file << "\n";
     }
 }

@@ -12,6 +12,7 @@ public:
     void run() override;
     void write_field(const std::string& filename) const override;
     double compute_time() const override;
+    double comm_time() const;
 
 private:
     const MPIDomain& domain_;
@@ -27,4 +28,5 @@ private:
     void exchange_halos();
     void step();
     Timer compute_timer_;
+    Timer comm_timer_;
 };
