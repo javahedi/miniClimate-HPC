@@ -4,29 +4,37 @@ project(miniClimateHPC LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Hint to CMake where Homebrew keeps libomp on Apple Silicon/Intel Macs
+# 1. Platform-specific hints for Homebrew paths on macOS
 if(APPLE)
-    list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/libomp" "/usr/local/opt/libomp")
+    # Search paths for OpenMP and OpenMPI
+    list(APPEND CMAKE_PREFIX_PATH 
+        "/opt/homebrew/opt/libomp"
+        "/opt/homebrew/opt/open-mpi"
+        "/usr/local/opt/libomp"
+        "/usr/local/opt/open-mpi"
+    )
 endif()
 
-# Now find_package works flawlessly across Mac, Linux, and Windows
+# 2. Find Parallel Frameworks
 find_package(OpenMP REQUIRED)
+find_package(MPI REQUIRED)
 
-# Define the executable target
+# 3. Define the Executable Target
 add_executable(miniClimate
     src/main.cpp
     src/solver.cpp
     src/config.cpp
     src/benchmark.cpp
-
+    src/mpi_domain.cpp
 )
 
-# Modern target-based linking (automatically handles flags, includes, and libs)
+# 4. Target-Based Linking
+# This automatically chains the include directories, compiler options, and library links
 target_link_libraries(miniClimate
     PRIVATE
     OpenMP::OpenMP_CXX
+    MPI::MPI_CXX
 )
-
 # Target-specific include directories
 target_include_directories(miniClimate 
     PRIVATE 
