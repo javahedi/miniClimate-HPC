@@ -20,7 +20,8 @@ jobs:
         sudo apt-get install -y \
           build-essential \
           cmake \
-          libomp-dev
+          libopenmpi-dev \
+          openmpi-bin
 
     - name: Configure CMake
       # Creates the build directory and generates build files automatically
@@ -32,7 +33,9 @@ jobs:
 
     - name: Run executable
       run: |
-        ./build/miniClimate \
+        # We use mpirun with 2 ranks to verify our MPI environment 
+        # is fully operational within the GitHub environment!
+        mpirun -np 2 ./build/miniClimate \
           --nx 64 \
           --ny 64 \
           --steps 10
