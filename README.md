@@ -1,6 +1,9 @@
 
 # miniClimate-HPC
 
+![CI](https://github.com/javahedi/QuantumTransportPP/actions/workflows/ci.yml/badge.svg)
+
+
 `miniClimate-HPC` is a high-performance, physics-proxy mini-application implementing a **2D Finite-Difference Advection-Diffusion Solver**. It serves as an architectural proxy for computationally intensive stencil kernels found in production-grade climate, atmospheric, and ocean models (e.g., WRF, ICON).
 
 The application solves the governing partial differential equation (PDE):
