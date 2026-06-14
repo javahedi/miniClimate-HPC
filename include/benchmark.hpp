@@ -7,7 +7,8 @@ void append_benchmark(
     int nx,
     int ny,
     int steps,
-    int threads,
+    int mpi_rank,
+    int omp_threads,
     double runtime,
     double compute_time,
     double mlups

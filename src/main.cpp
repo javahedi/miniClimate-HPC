@@ -42,15 +42,32 @@ int main(int argc, char** argv)
 
         double runtime = std::chrono::duration<double>(end - start).count();
         long long updates = static_cast<long long>(cfg.nx) * cfg.ny * cfg.steps;
-        double mlups = updates / runtime / 1e6;
+        double mlups = static_cast<double>(updates) / runtime / 1e6;
 
         if (domain.rank() == 0) {
             std::cout << "\nRuntime : " << runtime << " s\n";
             std::cout << "MLUPS   : " << mlups << "\n";
 
-            append_benchmark("benchmark.csv", cfg.nx, cfg.ny, cfg.steps, omp_get_max_threads(), runtime, compute_time, mlups);
-            solver->write_field(cfg.output);
+            append_benchmark(
+                cfg.benchmark,
+                cfg.nx,
+                cfg.ny,
+                cfg.steps,
+                domain.size(),
+                omp_get_max_threads(),
+                runtime,
+                compute_time,
+                mlups
+            );
+
+           
         }
+        /*
+        Important:
+        In MPI mode, each rank writes its own file.
+        Therefore write_field must be called by all ranks.
+        */
+        solver->write_field(cfg.output);
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << "\n";

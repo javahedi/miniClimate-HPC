@@ -9,7 +9,8 @@ void append_benchmark(
     int nx,
     int ny,
     int steps,
-    int threads,
+    int mpi_rank,
+    int omp_threads,
     double runtime,
     double compute_time,
     double mlups)
@@ -24,14 +25,15 @@ void append_benchmark(
     if (write_header)
     {
         file
-        << "nx,ny,steps,threads,runtime,compute_time,mlups\n";
+        << "nx,ny,steps,mpi_rank, threads,runtime,compute_time,mlups\n";
     }
 
     file
     << nx << ","
     << ny << ","
     << steps << ","
-    << threads << ","
+    << mpi_rank << ","
+    << omp_threads << ","
     << runtime << ","
     << compute_time <<","
     << mlups << "\n";

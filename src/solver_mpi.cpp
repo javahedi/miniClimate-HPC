@@ -95,7 +95,7 @@ double SolverMPI::compute_time() const { return compute_timer_.seconds(); }
 double SolverMPI::comm_time() const {return comm_timer_.seconds();
 }
 
-vvoid SolverMPI::write_field(const std::string& filename) const {
+void SolverMPI::write_field(const std::string& filename) const {
     std::string rank_filename =
         filename + "_rank" + std::to_string(domain_.rank()) + ".dat";
 

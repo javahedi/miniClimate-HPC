@@ -1,30 +1,75 @@
 #!/bin/bash
-#SBATCH --job-name=climate_omp       # Job name
-#SBATCH --output=results/omp_%j.log  # Standard output log (%j inserts JobID)
-#SBATCH --error=results/omp_%j.err   # Standard error log
-#SBATCH --nodes=1                    # Request exactly 1 node
-#SBATCH --ntasks=1                   # 1 MPI process (Rank 0)
-#SBATCH --cpus-per-task=16           # Request 16 cores on that node
-#SBATCH --time=00:10:00              # Max walltime (10 minutes)
-#SBATCH --partition=s384g9d          # Targeted cluster partition
+#SBATCH --job-name=climate_omp
+#SBATCH --output=results/logs/omp_%j.out
+#SBATCH --error=results/logs/omp_%j.err
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --exclusive
+#SBATCH --time=00:20:00
+#SBATCH --partition=s384g9d
 
-# CRITICAL: Configure the compute node environment
-module purge                          # Clear any inheriting default system paths
-module load tool/comp/gcc/13.1.0      # Load your exact compiler runtime
+set -euo pipefail
+
+module purge
+module load tool/comp/gcc/13.1.0
 module load tool/mpi/openmpi/4.1.5/gcc-13.1.0
 
+mkdir -p results/logs results/fields
+
 echo "========================================================"
-echo "Starting Pure OpenMP Thread Scaling on Intel Xeon Gold"
+echo "miniClimate-HPC OpenMP strong-scaling benchmark"
+echo "Job ID          : ${SLURM_JOB_ID}"
+echo "Node            : ${SLURM_NODELIST}"
+echo "CPUs/task       : ${SLURM_CPUS_PER_TASK}"
+echo "Date            : $(date)"
 echo "========================================================"
 
-for t in 1 2 4 8 16; do
-    echo "----------------------------------------------------"
-    echo "Running with OMP_NUM_THREADS=$t"
-    echo "----------------------------------------------------"
-    
-    export OMP_NUM_THREADS=$t
-    export OMP_PLACES=cores
-    export OMP_PROC_BIND=close
 
-    ./build/miniClimate --nx 2048 --ny 2048 --steps 500
+
+#echo "========================================================" 
+#echo "Building code" 
+#echo "========================================================" 
+#rm -rf build 
+#cmake -S . -B build -DCMAKE_BUILD_TYPE=Release #cmake --build build -j ${SLURM_CPUS_PER_TASK}
+
+
+lscpu | egrep "Model name|CPU\\(s\\)|Core\\(s\\)|Socket\\(s\\)|Thread\\(s\\)|NUMA"
+
+EXEC=./build/miniClimate
+
+if [ ! -x "$EXEC" ]; then
+    echo "Error: executable $EXEC not found or not executable"
+    exit 1
+fi
+
+NX=2048
+NY=2048
+STEPS=1000
+REPEATS=3
+
+OUT=results/openmp_strong_${SLURM_JOB_ID}.csv
+rm -f "$OUT"
+
+export OMP_PLACES=cores
+export OMP_PROC_BIND=close
+
+for t in 1 2 4 8 16
+do
+    for rep in $(seq 1 ${REPEATS})
+    do
+        echo "OpenMP: threads=${t}, repeat=${rep}"
+
+        export OMP_NUM_THREADS=${t}
+
+        mpirun --bind-to none -np 1 ${EXEC} \
+            --nx ${NX} \
+            --ny ${NY} \
+            --steps ${STEPS} \
+            --benchmark "$OUT" \
+            --output "results/fields/openmp_t${t}_rep${rep}"
+    done
 done
+
+echo "Benchmark CSV: $OUT"
+cat "$OUT"
