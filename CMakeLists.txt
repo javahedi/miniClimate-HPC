@@ -22,10 +22,11 @@ find_package(MPI REQUIRED)
 # 3. Define the Executable Target
 add_executable(miniClimate
     src/main.cpp
-    src/solver.cpp
     src/config.cpp
     src/benchmark.cpp
     src/mpi_domain.cpp
+    src/solver_openmp.cpp
+    src/solver_mpi.cpp
 )
 
 # 4. Target-Based Linking

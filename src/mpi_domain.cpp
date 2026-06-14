@@ -7,8 +7,8 @@ MPIDomain::MPIDomain(int global_nx, int global_ny, bool is_periodic, MPI_Comm co
       local_ny_(global_ny),
       is_periodic_(is_periodic)
 {
-    MPI_Comm_rank(comm_, &rank_);
-    MPI_Comm_size(comm_, &size_);
+    MPI_Comm_rank(comm_, &rank_); // "Who am I?" (0, 1, 2, 3...)
+    MPI_Comm_size(comm_, &size_); // "How many total processes are running?"
 
     if (global_nx_ % size_ != 0) {
         throw std::runtime_error(

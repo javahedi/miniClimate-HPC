@@ -1,118 +1,80 @@
-#include "solver.hpp"
+#include "solver_openmp.hpp"
 #include <cmath>
 #include <fstream>
-#include <iostream>
 #include <stdexcept>
-#include <omp.h> 
+#include <omp.h>
 
-Solver::Solver(int nx, int ny, int steps, double u, double v, double dt, double kappa)
+
+SolverOpenMP::SolverOpenMP(int nx, int ny, int steps, double u, double v, double dt, double kappa)
     : nx_(nx), 
       ny_(ny), 
       steps_(steps), 
-      u_(u),
-      v_(v),
+      u_(u), 
+      v_(v), 
       dt_(dt), 
       kappa_(kappa),
-      dx_(1.0 / nx),
-      dy_(1.0 / ny),
-      T_(nx * ny, 0.0),
+      dx_(1.0 / nx), dy_(1.0 / ny), 
+      T_(nx * ny, 0.0), 
       T_new_(nx * ny, 0.0)
 {
     if (nx_ <= 2 || ny_ <= 2) {
-        throw std::runtime_error("Grid size must be larger than 2 in both directions.");
+        throw std::runtime_error("Grid size must be larger than 2.");
     }
 }
 
-int Solver::index(int i, int j) const {
-    return i * ny_ + j;
+int SolverOpenMP::index(int i, int j) const {
+    // Modulo logic wraps around local coordinate bounds safely
+    int wrapped_i = (i + nx_) % nx_;
+    int wrapped_j = (j + ny_) % ny_;
+    return wrapped_i * ny_ + wrapped_j;
 }
 
-void Solver::initialize() {
+void SolverOpenMP::initialize() {
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < nx_; ++i) {
         for (int j = 0; j < ny_; ++j) {
             double x = static_cast<double>(i) / nx_;
             double y = static_cast<double>(j) / ny_;
-
-            double cx = 0.5;
-            double cy = 0.5;
-            double sigma = 0.05;
-
-            double r2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-            T_[index(i, j)] = std::exp(-r2 / (2.0 * sigma * sigma));
+            double r2 = (x - 0.5)*(x - 0.5) + (y - 0.5)*(y - 0.5);
+            T_[index(i, j)] = std::exp(-r2 / (2.0 * 0.05 * 0.05));
         }
     }
 }
 
-// This function is now called by ALL threads simultaneously inside the parallel region
-void Solver::step() {
+void SolverOpenMP::step() {
     double dx2 = dx_ * dx_;
     double dy2 = dy_ * dy_;
 
-    // Notice there is NO `parallel` keyword here, only `omp for`.
-    // It hitches a ride on the thread pool already spawned in run().
-    #pragma omp for schedule(static)
+    #pragma omp parallel for collapse(2)
     for (int i = 0; i < nx_; ++i) {
-        int ip = (i + 1) % nx_;
-        int im = (i - 1 + nx_) % nx_; 
-        
         for (int j = 0; j < ny_; ++j) {
-            int jp = (j + 1) % ny_;
-            int jm = (j - 1 + ny_) % ny_; 
-
             double center = T_[index(i, j)];
+            double laplacian = (T_[index(i+1, j)] - 2.0 * center + T_[index(i-1, j)]) / dx2 +
+                               (T_[index(i, j+1)] - 2.0 * center + T_[index(i, j-1)]) / dy2;
 
-            double laplacian =
-                (T_[index(ip, j)] - 2.0 * center + T_[index(im, j)]) / dx2 +
-                (T_[index(i, jp)] - 2.0 * center + T_[index(i, jm)]) / dy2;
-
-            double dTdx = (T_[index(ip, j)] - T_[index(im, j)]) / (2.0 * dx_);
-            double dTdy = (T_[index(i, jp)] - T_[index(i, jm)]) / (2.0 * dy_);
+            double dTdx = (T_[index(i+1, j)] - T_[index(i-1, j)]) / (2.0 * dx_);
+            double dTdy = (T_[index(i, j+1)] - T_[index(i, j-1)]) / (2.0 * dy_);
 
             T_new_[index(i, j)] = center - dt_ * (u_ * dTdx + v_ * dTdy) + dt_ * kappa_ * laplacian;
         }
-    } // <-- There is an implicit OpenMP barrier here. All threads wait until the full grid step is computed.
+    }
+    T_.swap(T_new_);
 }
 
-void Solver::run()
-{
-    compute_timer_.reset();
-    compute_timer_.start();
-
-    // Spawn the OpenMP thread pool EXACTLY ONCE here
-    #pragma omp parallel
-    {
-        for (int n = 0; n < steps_; ++n) {
-            
-            // All threads jump into step() together and split up the rows
-            step(); 
-
-            // Only ONE thread swaps the pointers while others wait
-            #pragma omp single
-            {
-                T_.swap(T_new_);
-            } // <-- Implicit barrier here ensures the swap finishes before anyone starts the next time step loop
-        }
-    }
-
+void SolverOpenMP::run() {
+    compute_timer_.reset(); compute_timer_.start();
+    for (int n = 0; n < steps_; ++n) { step(); }
     compute_timer_.stop();
 }
 
-double Solver::compute_time() const {
-    return compute_timer_.seconds();
-}
+double SolverOpenMP::compute_time() const { return compute_timer_.seconds(); }
 
-void Solver::write_field(const std::string& filename) const {
+void SolverOpenMP::write_field(const std::string& filename) const {
     std::ofstream file(filename);
-    if (!file) {
-        throw std::runtime_error("Could not open output file");
-    }
     for (int i = 0; i < nx_; ++i) {
         for (int j = 0; j < ny_; ++j) {
-            double x = static_cast<double>(i) / nx_;
-            double y = static_cast<double>(j) / ny_;
-            file << x << " " << y << " " << T_[index(i, j)] << "\n";
+            file << T_[index(i, j)] << (j == ny_ - 1 ? "" : " ");
         }
         file << "\n";
     }
-    std::cout << "Wrote field to " << filename << "\n";
 }

@@ -1,42 +1,26 @@
-#pragma once 
+#pragma once
 
-#include "timer.hpp"
-#include <vector>
+
 #include <string>
 
-
 /*
-    Solver for simplae 2d advection-diffusion equaiton:
-        dT/dt + u dT/dx + v dT/dy = kappa * Laplacian(T)
-
-    This is a standard stencil problem.
-    It is not meant to be a full climate model.
-    It is a compact proxy for climate/HPC kernels.
-
+    Abstract Base Class for miniClimate Equation Solvers.
+    Enforces a strict lifecycle pattern across different parallel models.
 */
-
 
 class Solver {
     public:
-        Solver(int nx, int ny, int steps, double u, double v, double dt, double kappa);
 
-        void initialize();
-        void run();
-        void write_field(const std::string& filename) const;
-        double compute_time() const;
+        virtual ~Solver() = default;
 
-    private:
-        int nx_, ny_, steps_;
-        double u_, v_;
-        double dt_, kappa_;
-        double dx_, dy_;
+        // Core execution lifecycle hooks
+        // pure virtual , and will b inplemnted in child classes
+        virtual void initialize() = 0;
+        virtual void run() = 0;
+        virtual void write_field(const std::string& filename) const = 0;
 
-        std::vector<double> T_;      // current temperature field
-        std::vector<double> T_new_;  // updated field
+        // Performance benchmarking accessors
+        virtual double compute_time() const = 0;
 
-
-        int index(int i, int j) const;
-        void step();
-        Timer compute_timer_;
-    
- };
+   
+}
