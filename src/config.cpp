@@ -55,6 +55,9 @@ Config parse_args(int argc, char** argv)
 
             cfg.output = require_value(arg);
 
+        } else if (arg == "--benchmark") {
+            cfg.benchmark = require_value(arg);
+        
         } else {
 
             throw std::runtime_error(
@@ -92,6 +95,8 @@ void print_config(const Config& cfg)
 
     std::cout << "Output    : "
               << cfg.output << "\n";
+
+    std::cout << "Benchmark : " << cfg.benchmark << "\n";
 
     std::cout << "====================================\n";
 }

@@ -15,6 +15,7 @@ struct Config {
     double kappa = 0.01;
 
     std::string output = "final_field.dat";
+    std::string benchmark = "benchmark.csv";
 };
 
 Config parse_args(int argc, char** argv);
